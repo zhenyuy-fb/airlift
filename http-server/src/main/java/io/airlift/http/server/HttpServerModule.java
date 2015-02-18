@@ -35,7 +35,7 @@ import static org.weakref.jmx.guice.ExportBinder.newExporter;
  * Features:
  * <ul>
  * <li>HTTP/HTTPS</li>
- * <li>Basic Auth</li>
+ * <li>Http Authentication</li>
  * <li>Request logging</li>
  * <li>JMX</li>
  * </ul>

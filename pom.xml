@@ -13,7 +13,7 @@
     <parent>
         <groupId>io.airlift</groupId>
         <artifactId>airbase</artifactId>
-        <version>30</version>
+        <version>32</version>
     </parent>
 
     <inceptionYear>2010</inceptionYear>
@@ -25,7 +25,7 @@
 
         <dep.airlift.version>0.103-SNAPSHOT</dep.airlift.version>
         <dep.packaging.version>${dep.airlift.version}</dep.packaging.version>
-        <dep.slice.version>0.9</dep.slice.version>
+        <dep.shiro.version>1.2.3</dep.shiro.version>
     </properties>
 
     <organization>
@@ -71,6 +71,7 @@
         <module>log-manager</module>
         <module>node</module>
         <module>packaging</module>
+        <module>security</module>
         <module>stats</module>
         <module>testing</module>
         <module>trace-token</module>
@@ -195,6 +196,12 @@
 
             <dependency>
                 <groupId>io.airlift</groupId>
+                <artifactId>security</artifactId>
+                <version>${dep.airlift.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>io.airlift</groupId>
                 <artifactId>stats</artifactId>
                 <version>${dep.airlift.version}</version>
             </dependency>
@@ -221,6 +228,18 @@
                 <groupId>mysql</groupId>
                 <artifactId>mysql-connector-java</artifactId>
                 <version>5.1.23</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.apache.shiro</groupId>
+                <artifactId>shiro-core</artifactId>
+                <version>${dep.shiro.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.apache.shiro</groupId>
+                <artifactId>shiro-web</artifactId>
+                <version>${dep.shiro.version}</version>
             </dependency>
 
             <dependency>

@@ -15,6 +15,7 @@
  */
 package io.airlift.http.server;
 
+import com.google.common.collect.ImmutableList;
 import io.airlift.configuration.Config;
 import io.airlift.configuration.ConfigDescription;
 import io.airlift.configuration.DefunctConfig;
@@ -23,6 +24,7 @@ import io.airlift.units.Duration;
 
 import javax.validation.constraints.Min;
 
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 @DefunctConfig({
@@ -51,6 +53,10 @@ public class HttpServerConfig
     private String keystorePath;
     private String keystorePassword;
 
+    private List<AuthScheme> authSchemes;
+    private String krb5Conf;
+    private String serviceName;
+
     private String logPath = "var/log/http-request.log";
     private Duration logRetentionTime = new Duration(15, TimeUnit.DAYS);
 
@@ -68,6 +74,12 @@ public class HttpServerConfig
     private int adminMaxThreads = 200;
 
     private boolean showStackTrace = true;
+
+    public static final String DELIMITER = ",";
+    public enum AuthScheme
+    {
+        NEGOTIATE
+    }
 
     public boolean isHttpEnabled()
     {
@@ -90,6 +102,44 @@ public class HttpServerConfig
     public HttpServerConfig setHttpPort(int httpPort)
     {
         this.httpPort = httpPort;
+        return this;
+    }
+
+    public List<AuthScheme> getAuthSchemes() { return authSchemes; }
+
+    @Config("http-server.https.authentication.enabled-schemes")
+    public HttpServerConfig setAuthSchemes(String authSchemesStr)
+    {
+        if(authSchemesStr != null && authSchemesStr.length() > 0) {
+            ImmutableList.Builder<AuthScheme> builder = ImmutableList.builder();
+            String[] schemes = authSchemesStr.split(DELIMITER);
+            for (String scheme : schemes) {
+                try {
+                    builder.add(AuthScheme.valueOf(scheme.toUpperCase()));
+                } catch (IllegalArgumentException ex) {
+                    throw new IllegalArgumentException(String.format("unrecognized scheme [%s].", scheme));
+                }
+            }
+            authSchemes = builder.build();
+        }
+        return this;
+    }
+
+    public String getKrb5Conf() { return krb5Conf; }
+
+    @Config("http-server.https.authentication.negotiate.krb5conf")
+    public HttpServerConfig setKrb5Conf(String krb5Conf)
+    {
+        this.krb5Conf = krb5Conf;
+        return this;
+    }
+
+    public String getServiceName() { return serviceName; }
+
+    @Config("http-server.https.authentication.negotiate.service-name")
+    public HttpServerConfig setServiceName(String serviceName)
+    {
+        this.serviceName = serviceName;
         return this;
     }
 

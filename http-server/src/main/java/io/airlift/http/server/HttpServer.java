@@ -16,12 +16,19 @@
 package io.airlift.http.server;
 
 import com.google.common.base.Preconditions;
+import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.primitives.Ints;
 import io.airlift.event.client.EventClient;
 import io.airlift.http.server.HttpServerBinder.HttpResourceBinding;
 import io.airlift.node.NodeInfo;
+import io.airlift.security.realm.SpnegoRealm;
 import io.airlift.tracetoken.TraceTokenManager;
+import org.apache.shiro.SecurityUtils;
+import org.apache.shiro.mgt.DefaultSecurityManager;
+import org.apache.shiro.realm.Realm;
+import org.apache.shiro.web.env.EnvironmentLoaderListener;
+import org.apache.shiro.web.servlet.ShiroFilter;
 import org.eclipse.jetty.jmx.MBeanContainer;
 import org.eclipse.jetty.security.ConstraintMapping;
 import org.eclipse.jetty.security.ConstraintSecurityHandler;
@@ -53,18 +60,22 @@ import org.eclipse.jetty.util.thread.ThreadPool;
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 import javax.management.MBeanServer;
+import javax.servlet.DispatcherType;
 import javax.servlet.Filter;
 import javax.servlet.Servlet;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.EnumSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 
+import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
+import static io.airlift.http.server.HttpServerConfig.AuthScheme;
 import static java.lang.String.format;
 
 public class HttpServer
@@ -221,7 +232,8 @@ public class HttpServer
             handlers.addHandler(new ClassPathResourceHandler(resource.getBaseUri(), resource.getClassPathResourceBase(), resource.getWelcomeFiles()));
         }
 
-        handlers.addHandler(createServletContext(theServlet, parameters, filters, tokenManager, loginService, "http", "https"));
+        handlers.addHandler(createServletContext(theServlet, parameters, filters, tokenManager,
+                loginService, config, "http", "https"));
         RequestLogHandler logHandler = createLogHandler(config, tokenManager, eventClient);
         if (logHandler != null) {
             handlers.addHandler(logHandler);
@@ -237,7 +249,8 @@ public class HttpServer
 
         HandlerList rootHandlers = new HandlerList();
         if (theAdminServlet != null && config.isAdminEnabled()) {
-            rootHandlers.addHandler(createServletContext(theAdminServlet, adminParameters, adminFilters, tokenManager, loginService, "admin"));
+            rootHandlers.addHandler(createServletContext(theAdminServlet, adminParameters, adminFilters, tokenManager,
+                    loginService, config, "admin"));
         }
         rootHandlers.addHandler(statsHandler);
         server.setHandler(rootHandlers);
@@ -248,6 +261,7 @@ public class HttpServer
             Set<Filter> filters,
             TraceTokenManager tokenManager,
             LoginService loginService,
+            HttpServerConfig config,
             String... connectorNames)
     {
         ServletContextHandler context = new ServletContextHandler(ServletContextHandler.NO_SESSIONS);
@@ -260,7 +274,32 @@ public class HttpServer
         // -- gzip response filter
         context.addFilter(GzipFilter.class, "/*", null);
         // -- security handler
-        if (loginService != null) {
+        if (config.getAuthSchemes() != null) {
+            for (AuthScheme scheme : config.getAuthSchemes()) {
+                switch (scheme) {
+                    case NEGOTIATE:
+                        checkArgument(!Strings.isNullOrEmpty(config.getServiceName()));
+                        checkArgument(!Strings.isNullOrEmpty(config.getKrb5Conf()));
+                        checkArgument((new File(config.getKrb5Conf())).exists());
+                        Realm realm = new SpnegoRealm("spnego_realm", config.getServiceName(), config.getKrb5Conf());
+                        DefaultSecurityManager securityManager = new DefaultSecurityManager(realm);
+                        SecurityUtils.setSecurityManager(securityManager);
+                        break;
+                    default:
+                        // do nothing
+                        break;
+                }
+            }
+            // -- shiro environment
+            EnvironmentLoaderListener listener = new EnvironmentLoaderListener();
+            context.addEventListener(listener);
+            // -- root shiro filter
+            FilterHolder filterHolder = new FilterHolder();
+            filterHolder.setFilter(new ShiroFilter());
+
+            EnumSet<DispatcherType> types = EnumSet.allOf(DispatcherType.class);
+            context.addFilter(filterHolder, "/*", types);
+        } else if (loginService != null) {
             SecurityHandler securityHandler = createSecurityHandler(loginService);
             context.setSecurityHandler(securityHandler);
         }

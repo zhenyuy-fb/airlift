@@ -30,25 +30,29 @@ public class TestHttpServerConfig
     public void testDefaults()
     {
         ConfigAssertions.assertRecordedDefaults(ConfigAssertions.recordDefaults(HttpServerConfig.class)
-                .setHttpEnabled(true)
-                .setHttpPort(8080)
-                .setHttpsEnabled(false)
-                .setHttpsPort(8443)
-                .setKeystorePath(null)
-                .setKeystorePassword(null)
-                .setLogPath("var/log/http-request.log")
-                .setLogRetentionTime((new Duration(15, TimeUnit.DAYS)))
-                .setMinThreads(2)
-                .setMaxThreads(200)
-                .setThreadMaxIdleTime(new Duration(1, TimeUnit.MINUTES))
-                .setNetworkMaxIdleTime(new Duration(200, TimeUnit.SECONDS))
-                .setUserAuthFile(null)
-                .setAdminEnabled(true)
-                .setAdminPort(0)
-                .setAdminMinThreads(2)
-                .setAdminMaxThreads(200)
-                .setMaxRequestHeaderSize(null)
-                .setShowStackTrace(true)
+                        .setHttpEnabled(true)
+                        .setHttpPort(8080)
+                        .setHttpsEnabled(false)
+                        .setHttpsPort(8443)
+                        .setKeystorePath(null)
+                        .setKeystorePassword(null)
+                        .setLogPath("var/log/http-request.log")
+                        .setLogRetentionTime((new Duration(15, TimeUnit.DAYS)))
+                        .setMinThreads(2)
+                        .setMaxThreads(200)
+                        .setThreadMaxIdleTime(new Duration(1, TimeUnit.MINUTES))
+                        .setNetworkMaxIdleTime(new Duration(200, TimeUnit.SECONDS))
+                        .setUserAuthFile(null)
+                        .setAdminEnabled(true)
+                        .setAdminPort(0)
+                        .setAdminMinThreads(2)
+                        .setAdminMaxThreads(200)
+                        .setMaxRequestHeaderSize(null)
+                        .setShowStackTrace(true)
+                        .setAuthSchemes(null)
+                        .setKrb5Conf(null)
+                        .setServiceName(null)
+
         );
     }
  
@@ -75,6 +79,9 @@ public class TestHttpServerConfig
                 .put("http-server.admin.threads.max", "4")
                 .put("http-server.max-request-header-size", "32kB")
                 .put("http-server.show-stack-trace", "false")
+                .put("http-server.https.authentication.enabled-schemes", "negotiate")
+                .put("http-server.https.authentication.negotiate.krb5conf", "/etc/krb5.conf")
+                .put("http-server.https.authentication.negotiate.service-name", "presto")
                 .build();
 
         HttpServerConfig expected = new HttpServerConfig()
@@ -96,7 +103,10 @@ public class TestHttpServerConfig
                 .setAdminPort(3)
                 .setAdminMinThreads(3)
                 .setAdminMaxThreads(4)
-                .setShowStackTrace(false);
+                .setShowStackTrace(false)
+                .setAuthSchemes("negotiate")
+                .setKrb5Conf("/etc/krb5.conf")
+                .setServiceName("presto");
 
         ConfigAssertions.assertFullMapping(properties, expected);
     }
