@@ -117,7 +117,7 @@ public class HttpServerConfig
                 try {
                     builder.add(AuthScheme.valueOf(scheme.toUpperCase()));
                 } catch (IllegalArgumentException ex) {
-                    throw new IllegalArgumentException(String.format("unrecognized scheme [%s].", scheme));
+                    throw new IllegalArgumentException(String.format("Unrecognized authentication scheme %s", scheme));
                 }
             }
             authSchemes = builder.build();
