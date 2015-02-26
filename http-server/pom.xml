@@ -53,12 +53,12 @@
 
         <dependency>
             <groupId>io.airlift</groupId>
-            <artifactId>security</artifactId>
+            <artifactId>stats</artifactId>
         </dependency>
 
         <dependency>
             <groupId>io.airlift</groupId>
-            <artifactId>stats</artifactId>
+            <artifactId>security</artifactId>
         </dependency>
 
         <dependency>
@@ -150,11 +150,6 @@
         <dependency>
             <groupId>joda-time</groupId>
             <artifactId>joda-time</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>org.apache.shiro</groupId>
-            <artifactId>shiro-core</artifactId>
         </dependency>
 
         <dependency>

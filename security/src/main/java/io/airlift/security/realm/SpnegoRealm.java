@@ -41,11 +41,11 @@ public class SpnegoRealm extends AuthenticatingRealm
 
     private static final Logger log = Logger.get(SpnegoRealm.class);
 
-    public SpnegoRealm(String realmName, String serviceName, String krb5Config)
+    public SpnegoRealm(String realmName, String serviceName, String krb5Conf)
     {
         this.realmName = realmName;
         this.serviceName = serviceName;
-        this.krb5Conf = krb5Config;
+        this.krb5Conf = krb5Conf;
     }
 
     private static class KerberosConfiguration extends Configuration

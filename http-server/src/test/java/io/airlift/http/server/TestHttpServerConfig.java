@@ -49,9 +49,6 @@ public class TestHttpServerConfig
                         .setAdminMaxThreads(200)
                         .setMaxRequestHeaderSize(null)
                         .setShowStackTrace(true)
-                        .setAuthSchemes(null)
-                        .setKrb5Conf(null)
-                        .setServiceName(null)
 
         );
     }
@@ -79,9 +76,6 @@ public class TestHttpServerConfig
                 .put("http-server.admin.threads.max", "4")
                 .put("http-server.max-request-header-size", "32kB")
                 .put("http-server.show-stack-trace", "false")
-                .put("http-server.https.authentication.enabled-schemes", "negotiate")
-                .put("http-server.https.authentication.negotiate.krb5conf", "/etc/krb5.conf")
-                .put("http-server.https.authentication.negotiate.service-name", "presto")
                 .build();
 
         HttpServerConfig expected = new HttpServerConfig()
@@ -103,10 +97,7 @@ public class TestHttpServerConfig
                 .setAdminPort(3)
                 .setAdminMinThreads(3)
                 .setAdminMaxThreads(4)
-                .setShowStackTrace(false)
-                .setAuthSchemes("negotiate")
-                .setKrb5Conf("/etc/krb5.conf")
-                .setServiceName("presto");
+                .setShowStackTrace(false);
 
         ConfigAssertions.assertFullMapping(properties, expected);
     }

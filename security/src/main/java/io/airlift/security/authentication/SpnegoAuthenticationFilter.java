@@ -3,6 +3,7 @@ package io.airlift.security.authentication;
 import com.google.common.base.Strings;
 import io.airlift.log.Logger;
 import org.apache.shiro.authc.AuthenticationToken;
+import org.apache.shiro.authc.UsernamePasswordToken;
 import org.apache.shiro.web.filter.authc.AuthenticatingFilter;
 import org.apache.shiro.web.util.WebUtils;
 import org.eclipse.jetty.http.HttpHeader;

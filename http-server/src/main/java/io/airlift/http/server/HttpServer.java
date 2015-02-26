@@ -16,17 +16,12 @@
 package io.airlift.http.server;
 
 import com.google.common.base.Preconditions;
-import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.primitives.Ints;
 import io.airlift.event.client.EventClient;
 import io.airlift.http.server.HttpServerBinder.HttpResourceBinding;
 import io.airlift.node.NodeInfo;
-import io.airlift.security.realm.SpnegoRealm;
 import io.airlift.tracetoken.TraceTokenManager;
-import org.apache.shiro.SecurityUtils;
-import org.apache.shiro.mgt.DefaultSecurityManager;
-import org.apache.shiro.realm.Realm;
 import org.apache.shiro.web.env.EnvironmentLoaderListener;
 import org.apache.shiro.web.servlet.ShiroFilter;
 import org.eclipse.jetty.jmx.MBeanContainer;
@@ -73,9 +68,7 @@ import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
-import static io.airlift.http.server.HttpServerConfig.AuthScheme;
 import static java.lang.String.format;
 
 public class HttpServer
@@ -98,6 +91,7 @@ public class HttpServer
             Set<Filter> adminFilters,
             MBeanServer mbeanServer,
             LoginService loginService,
+            EnvironmentLoaderListener environmentLoaderListener,
             TraceTokenManager tokenManager,
             RequestStats stats,
             EventClient eventClient)
@@ -233,7 +227,7 @@ public class HttpServer
         }
 
         handlers.addHandler(createServletContext(theServlet, parameters, filters, tokenManager,
-                loginService, config, "http", "https"));
+                loginService, environmentLoaderListener, "http", "https"));
         RequestLogHandler logHandler = createLogHandler(config, tokenManager, eventClient);
         if (logHandler != null) {
             handlers.addHandler(logHandler);
@@ -250,7 +244,7 @@ public class HttpServer
         HandlerList rootHandlers = new HandlerList();
         if (theAdminServlet != null && config.isAdminEnabled()) {
             rootHandlers.addHandler(createServletContext(theAdminServlet, adminParameters, adminFilters, tokenManager,
-                    loginService, config, "admin"));
+                    loginService, environmentLoaderListener, "admin"));
         }
         rootHandlers.addHandler(statsHandler);
         server.setHandler(rootHandlers);
@@ -261,7 +255,7 @@ public class HttpServer
             Set<Filter> filters,
             TraceTokenManager tokenManager,
             LoginService loginService,
-            HttpServerConfig config,
+            EnvironmentLoaderListener environmentLoaderListener,
             String... connectorNames)
     {
         ServletContextHandler context = new ServletContextHandler(ServletContextHandler.NO_SESSIONS);
@@ -273,26 +267,10 @@ public class HttpServer
 
         // -- gzip response filter
         context.addFilter(GzipFilter.class, "/*", null);
-        // -- security handler
-        if (config.getAuthSchemes() != null) {
-            for (AuthScheme scheme : config.getAuthSchemes()) {
-                switch (scheme) {
-                    case NEGOTIATE:
-                        checkArgument(!Strings.isNullOrEmpty(config.getServiceName()));
-                        checkArgument(!Strings.isNullOrEmpty(config.getKrb5Conf()));
-                        checkArgument((new File(config.getKrb5Conf())).exists());
-                        Realm realm = new SpnegoRealm("spnego_realm", config.getServiceName(), config.getKrb5Conf());
-                        DefaultSecurityManager securityManager = new DefaultSecurityManager(realm);
-                        SecurityUtils.setSecurityManager(securityManager);
-                        break;
-                    default:
-                        // do nothing
-                        break;
-                }
-            }
+        // -- security handler or shiro filter
+        if (environmentLoaderListener != null) {
             // -- shiro environment
-            EnvironmentLoaderListener listener = new EnvironmentLoaderListener();
-            context.addEventListener(listener);
+            context.addEventListener(environmentLoaderListener);
             // -- root shiro filter
             FilterHolder filterHolder = new FilterHolder();
             filterHolder.setFilter(new ShiroFilter());
