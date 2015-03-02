@@ -101,6 +101,8 @@ public class HttpServer
         Preconditions.checkNotNull(nodeInfo, "nodeInfo is null");
         Preconditions.checkNotNull(config, "config is null");
         Preconditions.checkNotNull(theServlet, "theServlet is null");
+        Preconditions.checkArgument(loginService == null || environmentLoaderListener == null,
+                "Either environmentLoaderListener or loginService can be set but not both");
 
         QueuedThreadPool threadPool = new QueuedThreadPool(config.getMaxThreads());
         threadPool.setMinThreads(config.getMinThreads());

@@ -19,7 +19,7 @@ public class AuthConfig
 
     public List<AuthScheme> getAuthSchemes() { return authSchemes; }
 
-    @Config("http-security.https.authentication.enabled-schemes")
+    @Config("http-security.server.https.authentication.enabled-schemes")
     public AuthConfig setAuthSchemes(String authSchemesStr)
     {
         if(authSchemesStr != null && authSchemesStr.length() > 0) {
@@ -39,7 +39,7 @@ public class AuthConfig
 
     public String getKrb5Conf() { return krb5Conf; }
 
-    @Config("http-security.https.authentication.negotiate.krb5conf")
+    @Config("http-security.server.https.authentication.negotiate.krb5conf")
     public AuthConfig setKrb5Conf(String krb5Conf)
     {
         this.krb5Conf = krb5Conf;
@@ -48,7 +48,7 @@ public class AuthConfig
 
     public String getServiceName() { return serviceName; }
 
-    @Config("http-server.https.authentication.negotiate.service-name")
+    @Config("http-security.server.https.authentication.negotiate.service-name")
     public AuthConfig setServiceName(String serviceName)
     {
         this.serviceName = serviceName;

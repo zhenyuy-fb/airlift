@@ -22,9 +22,9 @@ public class TestSecurityConfig
     public void testExplicitPropertyMappings()
     {
         Map<String, String> properties = new ImmutableMap.Builder<String, String>()
-                .put("http-security.https.authentication.enabled-schemes", "negotiate")
-                .put("http-security.https.authentication.negotiate.krb5conf", "/etc/krb5.conf")
-                .put("http-server.https.authentication.negotiate.service-name", "airlift")
+                .put("http-security.server.https.authentication.enabled-schemes", "negotiate")
+                .put("http-security.server.https.authentication.negotiate.krb5conf", "/etc/krb5.conf")
+                .put("http-security.server.https.authentication.negotiate.service-name", "airlift")
                 .build();
 
         AuthConfig expected = new AuthConfig()

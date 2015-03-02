@@ -4,7 +4,7 @@
 
     <artifactId>airlift</artifactId>
     <packaging>pom</packaging>
-    <version>0.103-SNAPSHOT</version>
+    <version>0.104-SNAPSHOT</version>
 
     <name>airlift</name>
     <description>Airlift</description>
@@ -23,7 +23,7 @@
         <air.check.fail-all>false</air.check.fail-all>
         <air.check.fail-basic>true</air.check.fail-basic>
 
-        <dep.airlift.version>0.103-SNAPSHOT</dep.airlift.version>
+        <dep.airlift.version>0.104-SNAPSHOT</dep.airlift.version>
         <dep.packaging.version>${dep.airlift.version}</dep.packaging.version>
         <dep.shiro.version>1.2.3</dep.shiro.version>
     </properties>
