@@ -36,7 +36,7 @@ public class SecurityEnvironmentLoaderListener
     private final ServerSecurityConfig serverSecurityConfig;
 
     @Inject
-    public SecurityEnvironmentLoaderListener(ServerSecurityConfig serverSecurityConfig)
+    public SecurityEnvironmentLoaderListener(@Security ServerSecurityConfig serverSecurityConfig)
     {
         checkNotNull(serverSecurityConfig, "securityServerConfig is null");
         List<AuthScheme> authSchemes = serverSecurityConfig.getAuthSchemes();

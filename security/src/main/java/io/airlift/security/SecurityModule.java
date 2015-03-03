@@ -28,7 +28,7 @@ public class SecurityModule implements ConfigurationAwareModule
         ServerSecurityConfig serverSecurityConfig = configurationFactory.build(ServerSecurityConfig.class);
         binder.bind(ServerSecurityConfig.class)
                 .annotatedWith(Security.class)
-                .toProvider(new ConfigurationProvider<ServerSecurityConfig>(Key.get(ServerSecurityConfig.class), ServerSecurityConfig.class, "http-security"));
+                .toProvider(new ConfigurationProvider<>(Key.get(ServerSecurityConfig.class), ServerSecurityConfig.class, null));
 
         if (serverSecurityConfig.enabled()) {
             binder.bind(EnvironmentLoaderListener.class).annotatedWith(Security.class).to(SecurityEnvironmentLoaderListener.class);

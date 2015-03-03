@@ -228,8 +228,19 @@ public class HttpServer
             handlers.addHandler(new ClassPathResourceHandler(resource.getBaseUri(), resource.getClassPathResourceBase(), resource.getWelcomeFiles()));
         }
 
-        handlers.addHandler(createServletContext(theServlet, parameters, filters, tokenManager,
-                loginService, environmentLoaderListener, "http", "https"));
+        ServletHolder servletHolder = new WrappedServletHolder(theServlet);
+        servletHolder.setInitParameters(ImmutableMap.copyOf(parameters));
+
+        if (config.isHttpEnabled()) {
+            handlers.addHandler(createServletContext(servletHolder, filters, tokenManager,
+                    loginService, null, "http"));
+        }
+
+        if (config.isHttpsEnabled()) {
+            handlers.addHandler(createServletContext(servletHolder, filters, tokenManager,
+                    loginService, environmentLoaderListener, "https"));
+        }
+
         RequestLogHandler logHandler = createLogHandler(config, tokenManager, eventClient);
         if (logHandler != null) {
             handlers.addHandler(logHandler);
@@ -245,22 +256,30 @@ public class HttpServer
 
         HandlerList rootHandlers = new HandlerList();
         if (theAdminServlet != null && config.isAdminEnabled()) {
-            rootHandlers.addHandler(createServletContext(theAdminServlet, adminParameters, adminFilters, tokenManager,
-                    loginService, environmentLoaderListener, "admin"));
+            ServletHolder adminServletHolder = new ServletHolder(theAdminServlet);
+            adminServletHolder.setInitParameters(ImmutableMap.copyOf(adminParameters));
+            // TODO: Will add security support for the admin endpoint.
+            rootHandlers.addHandler(createServletContext(adminServletHolder, adminFilters, tokenManager,
+                    loginService, null, "admin"));
         }
         rootHandlers.addHandler(statsHandler);
-        server.setHandler(rootHandlers);
+
+        server.setHandler(handlers);
     }
 
-    private static ServletContextHandler createServletContext(Servlet theServlet,
-            Map<String, String> parameters,
+    private static ServletContextHandler createServletContext(
+            ServletHolder servletHolder,
             Set<Filter> filters,
             TraceTokenManager tokenManager,
             LoginService loginService,
             EnvironmentLoaderListener environmentLoaderListener,
             String... connectorNames)
     {
-        ServletContextHandler context = new ServletContextHandler(ServletContextHandler.NO_SESSIONS);
+        int options = ServletContextHandler.NO_SESSIONS;
+        if (environmentLoaderListener != null) {
+            options = ServletContextHandler.NO_SESSIONS | ServletContextHandler.SECURITY;
+        }
+        ServletContextHandler context = new ServletContextHandler(options);
 
         context.addFilter(new FilterHolder(new TimingFilter()), "/*", null);
         if (tokenManager != null) {
@@ -288,8 +307,6 @@ public class HttpServer
             context.addFilter(new FilterHolder(filter), "/*", null);
         }
         // -- the servlet
-        ServletHolder servletHolder = new ServletHolder(theServlet);
-        servletHolder.setInitParameters(ImmutableMap.copyOf(parameters));
         context.addServlet(servletHolder, "/*");
 
         // Starting with Jetty 9 there is no way to specify connectors directly, but
