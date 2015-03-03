@@ -5,6 +5,7 @@ import com.google.inject.Key;
 import io.airlift.configuration.ConfigurationAwareModule;
 import io.airlift.configuration.ConfigurationFactory;
 import io.airlift.configuration.ConfigurationProvider;
+import io.airlift.security.config.ServerSecurityConfig;
 import org.apache.shiro.web.env.EnvironmentLoaderListener;
 
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -24,15 +25,13 @@ public class SecurityModule implements ConfigurationAwareModule
     public void configure(Binder binder)
     {
         checkState(configurationFactory != null, "configurationFactory was not set");
-        binder.bind(AuthConfig.class).toProvider(new ConfigurationProvider<AuthConfig>(Key.get(AuthConfig.class), AuthConfig.class, null));
-        AuthConfig authConfig = configurationFactory.build(AuthConfig.class);
-        if (shouldBind(authConfig)) {
+        ServerSecurityConfig serverSecurityConfig = configurationFactory.build(ServerSecurityConfig.class);
+        binder.bind(ServerSecurityConfig.class)
+                .annotatedWith(Security.class)
+                .toProvider(new ConfigurationProvider<ServerSecurityConfig>(Key.get(ServerSecurityConfig.class), ServerSecurityConfig.class, "http-security"));
+
+        if (serverSecurityConfig.enabled()) {
             binder.bind(EnvironmentLoaderListener.class).annotatedWith(Security.class).to(SecurityEnvironmentLoaderListener.class);
         }
-    }
-
-    private boolean shouldBind(AuthConfig authConfig)
-    {
-        return authConfig.getAuthSchemes() != null && ! authConfig.getAuthSchemes().isEmpty();
     }
 }

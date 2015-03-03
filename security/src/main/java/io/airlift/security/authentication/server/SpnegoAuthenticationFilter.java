@@ -1,4 +1,4 @@
-package io.airlift.security.authentication;
+package io.airlift.security.authentication.server;
 
 import com.google.common.base.Strings;
 import io.airlift.log.Logger;

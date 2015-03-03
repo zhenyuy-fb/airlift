@@ -1,7 +1,8 @@
 package io.airlift.security;
 
-import com.google.common.base.Strings;
-import io.airlift.security.authentication.SpnegoAuthenticationFilter;
+import io.airlift.security.authentication.AuthScheme;
+import io.airlift.security.authentication.server.SpnegoAuthenticationFilter;
+import io.airlift.security.config.ServerSecurityConfig;
 import io.airlift.security.realm.SpnegoRealm;
 import org.apache.shiro.realm.Realm;
 import org.apache.shiro.web.env.DefaultWebEnvironment;
@@ -20,21 +21,27 @@ import javax.servlet.ServletContextEvent;
 import javax.servlet.ServletContextListener;
 import javax.servlet.annotation.WebListener;
 
-import java.io.File;
+import java.util.List;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkNotNull;
 
 @WebListener
-public class SecurityEnvironmentLoaderListener extends EnvironmentLoaderListener implements ServletContextListener
+public class SecurityEnvironmentLoaderListener
+        extends EnvironmentLoaderListener
+        implements ServletContextListener
 {
     public static final String SPNEGO_FILTER = "spnego-filter";
     public static final String SPNEGO_REALM = "spnego-realm";
-    private final AuthConfig authConfig;
+    private final ServerSecurityConfig serverSecurityConfig;
 
     @Inject
-    public SecurityEnvironmentLoaderListener(AuthConfig authConfig)
+    public SecurityEnvironmentLoaderListener(ServerSecurityConfig serverSecurityConfig)
     {
-        this.authConfig = authConfig;
+        checkNotNull(serverSecurityConfig, "securityServerConfig is null");
+        List<AuthScheme> authSchemes = serverSecurityConfig.getAuthSchemes();
+        checkArgument(authSchemes != null && !authSchemes.isEmpty(), "authSchemes is null or empty");
+        this.serverSecurityConfig = serverSecurityConfig;
     }
 
     @Override
@@ -48,33 +55,26 @@ public class SecurityEnvironmentLoaderListener extends EnvironmentLoaderListener
     protected void customizeEnvironment(WebEnvironment environment)
     {
         if (environment instanceof MutableWebEnvironment) {
-            MutableWebEnvironment webEnvironment = (MutableWebEnvironment)environment;
+            MutableWebEnvironment webEnvironment = (MutableWebEnvironment) environment;
 
-            if (authConfig.getAuthSchemes() != null) {
-                for (AuthConfig.AuthScheme scheme : authConfig.getAuthSchemes()) {
-                    switch (scheme) {
-                        case NEGOTIATE:
-                            checkArgument(!Strings.isNullOrEmpty(authConfig.getServiceName()));
-                            checkArgument(!Strings.isNullOrEmpty(authConfig.getKrb5Conf()));
-                            checkArgument((new File(authConfig.getKrb5Conf())).exists());
-
-                            // set security manager and filter chain resolver
-                            webEnvironment.setWebSecurityManager(getWebSecurityManager());
-                            webEnvironment.setFilterChainResolver(getFilterChainResolver());
-                            break;
-                        default:
-                            // do nothing
-                            break;
-                    }
+            for (AuthScheme scheme : serverSecurityConfig.getAuthSchemes()) {
+                switch (scheme) {
+                    case NEGOTIATE:
+                        // set security manager and filter chain resolver
+                        webEnvironment.setWebSecurityManager(getWebSecurityManager());
+                        webEnvironment.setFilterChainResolver(getFilterChainResolver());
+                        break;
+                    default:
+                        // do nothing
+                        break;
                 }
             }
         }
-
     }
 
     private WebSecurityManager getWebSecurityManager()
     {
-        Realm spnegoRealm = new SpnegoRealm(SPNEGO_REALM, authConfig.getServiceName(), authConfig.getKrb5Conf());
+        Realm spnegoRealm = new SpnegoRealm(SPNEGO_REALM, serverSecurityConfig.getServiceName(), serverSecurityConfig.getKrb5Conf());
         WebSecurityManager webSecurityManager = new DefaultWebSecurityManager(spnegoRealm);
         return webSecurityManager;
     }

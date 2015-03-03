@@ -1,4 +1,4 @@
-package io.airlift.security.authentication;
+package io.airlift.security.authentication.server;
 
 import org.apache.shiro.authc.AuthenticationToken;
 
