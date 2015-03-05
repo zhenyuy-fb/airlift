@@ -51,7 +51,8 @@ public class SpnegoAuthenticationFilter extends AuthenticatingFilter
         }
         HttpServletResponse httpResponse = WebUtils.toHttp(response);
         httpResponse.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-        httpResponse.setHeader(HttpHeader.WWW_AUTHENTICATE.asString(), authScheme);
+        // TODO: realm is required by Jetty. Will polish this.
+        httpResponse.setHeader(HttpHeader.WWW_AUTHENTICATE.asString(), authScheme + " realm=\"dummy\"");
         return false;
     }
 

@@ -33,10 +33,11 @@ public class KerberosUtil
 
     static {
         try {
-            SPNEGO_OID = KerberosUtil.getOidInstance("1.3.6.1.5.5.2");
-            KERBEROS_OID = KerberosUtil.getOidInstance("1.2.840.113554.1.2.2");
+            // TODO: Use KerberosUtil.getOidInstance()
+            SPNEGO_OID = new Oid("1.3.6.1.5.5.2");
+            KERBEROS_OID = new Oid("1.2.840.113554.1.2.2");
         } //TODO propagate exceptions properly
-        catch (GSSException | IllegalAccessException | NoSuchFieldException | ClassNotFoundException e) {
+        catch (GSSException e) {
             throw Throwables.propagate(e);
         }
     }
@@ -101,7 +102,7 @@ public class KerberosUtil
             throws UnknownHostException
     {
         String fqdn = serviceHostname;
-        if (null == fqdn || fqdn.equals("") || fqdn.equals("0.0.0.0")) {
+        if (null == fqdn || fqdn.equals("") || fqdn.equals("0.0.0.0") || fqdn.equals("localhost")) {
             fqdn = InetAddress.getLocalHost().getCanonicalHostName();
             ;
         }
@@ -201,20 +202,20 @@ public class KerberosUtil
             String ticketCache = System.getenv("KRB5CCNAME");
 
             Map<String, String> options = new HashMap<String, String>();
-            options.put("useKeyTab", "true");
             options.put("storeKey", "true");
+            options.put("useKeyTab", "true");
             options.put("doNotPrompt", "true");
-            options.put("renewTGT", "true");
             options.put("refreshKrb5Config", "true");
-            if (principal != null) {
-                options.put("principal", principal);
-            }
+            options.put("renewTGT", "true");
             if (log.isDebugEnabled()) {
                 options.put("debug", "true");
             }
             switch (name) {
                 case GSS_SERVER:
                     options.put("isInitiator", "false");
+                    if (principal != null) {
+                        options.put("principal", principal);
+                    }
                     break;
                 case GSS_CLIENT:
                     if (ticketCache != null) {

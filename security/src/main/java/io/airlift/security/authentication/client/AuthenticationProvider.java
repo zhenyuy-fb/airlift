@@ -5,6 +5,7 @@ import io.airlift.security.config.ClientSecurityConfig;
 import org.eclipse.jetty.client.api.Authentication;
 
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.List;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -14,7 +15,7 @@ public class AuthenticationProvider
 {
     private final ClientSecurityConfig clientSecurityConfig;
     private final URI serviceUri;
-    private final List<Authentication> authentications = ImmutableList.of();
+    private final List<Authentication> authentications = new ArrayList<>();
 
     public AuthenticationProvider(ClientSecurityConfig clientSecurityConfig, URI serviceUri)
     {
