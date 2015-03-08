@@ -82,7 +82,6 @@ public class TestingHttpServer
                 ImmutableSet.<Filter>of(),
                 null,
                 null,
-                null,
                 new TraceTokenManager(),
                 new RequestStats(),
                 new NullEventClient());

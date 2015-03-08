@@ -1,10 +1,9 @@
 package io.airlift.security.realm;
 
-import com.google.common.base.Throwables;
 import io.airlift.log.Logger;
 import io.airlift.security.authentication.server.SpnegoAuthenticationToken;
+import io.airlift.security.exception.AuthenticationException;
 import io.airlift.security.utils.KerberosUtil;
-import org.apache.shiro.authc.AuthenticationException;
 import org.apache.shiro.authc.AuthenticationInfo;
 import org.apache.shiro.authc.AuthenticationToken;
 import org.apache.shiro.authc.SimpleAuthenticationInfo;
@@ -95,7 +94,7 @@ public class SpnegoRealm extends AuthenticatingRealm
             gssContext = KerberosUtil.getGssContext(serviceSubject, servicePrincipal, false);
         }
         catch (UnknownHostException | LoginException e) {
-            throw Throwables.propagate(e);
+            throw new AuthenticationException(e);
         }
     }
 

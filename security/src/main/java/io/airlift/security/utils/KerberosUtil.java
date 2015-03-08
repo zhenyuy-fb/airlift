@@ -2,6 +2,7 @@ package io.airlift.security.utils;
 
 import com.google.common.base.Throwables;
 import io.airlift.log.Logger;
+import io.airlift.security.exception.AuthenticationException;
 import org.ietf.jgss.GSSContext;
 import org.ietf.jgss.GSSCredential;
 import org.ietf.jgss.GSSException;

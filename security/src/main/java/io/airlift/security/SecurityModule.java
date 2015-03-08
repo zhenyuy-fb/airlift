@@ -1,17 +1,20 @@
 package io.airlift.security;
 
 import com.google.inject.Binder;
-import com.google.inject.Key;
+import com.google.inject.multibindings.Multibinder;
 import io.airlift.configuration.ConfigurationAwareModule;
 import io.airlift.configuration.ConfigurationFactory;
-import io.airlift.configuration.ConfigurationProvider;
+import io.airlift.http.server.TheServlet;
+import io.airlift.security.authentication.server.ExtendedShiroFilter;
 import io.airlift.security.config.ServerSecurityConfig;
-import org.apache.shiro.web.env.EnvironmentLoaderListener;
+
+import javax.servlet.Filter;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Preconditions.checkState;
 
-public class SecurityModule implements ConfigurationAwareModule
+public class SecurityModule
+        implements ConfigurationAwareModule
 {
     private ConfigurationFactory configurationFactory;
 
@@ -26,12 +29,9 @@ public class SecurityModule implements ConfigurationAwareModule
     {
         checkState(configurationFactory != null, "configurationFactory was not set");
         ServerSecurityConfig serverSecurityConfig = configurationFactory.build(ServerSecurityConfig.class);
-        binder.bind(ServerSecurityConfig.class)
-                .annotatedWith(Security.class)
-                .toProvider(new ConfigurationProvider<>(Key.get(ServerSecurityConfig.class), ServerSecurityConfig.class, null));
-
         if (serverSecurityConfig.enabled()) {
-            binder.bind(EnvironmentLoaderListener.class).annotatedWith(Security.class).to(SecurityEnvironmentLoaderListener.class);
+            Filter spnegoFilter = new ExtendedShiroFilter(serverSecurityConfig);
+            Multibinder.newSetBinder(binder, Filter.class, TheServlet.class).addBinding().toInstance(spnegoFilter);
         }
     }
 }

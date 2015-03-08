@@ -24,9 +24,7 @@ import com.google.inject.Provider;
 import io.airlift.event.client.EventClient;
 import io.airlift.http.server.HttpServerBinder.HttpResourceBinding;
 import io.airlift.node.NodeInfo;
-import io.airlift.security.Security;
 import io.airlift.tracetoken.TraceTokenManager;
-import org.apache.shiro.web.env.EnvironmentLoaderListener;
 import org.eclipse.jetty.security.LoginService;
 
 import javax.annotation.Nullable;
@@ -58,7 +56,6 @@ public class HttpServerProvider
     private final Set<Filter> filters;
     private final Set<Filter> adminFilters;
     private TraceTokenManager traceTokenManager;
-    private EnvironmentLoaderListener environmentLoaderListener;
     private final EventClient eventClient;
 
     @Inject
@@ -124,12 +121,6 @@ public class HttpServerProvider
     }
 
     @Inject(optional = true)
-    public void setEnvironmentLoaderListener(@Nullable @Security EnvironmentLoaderListener environmentLoaderListener)
-    {
-        this.environmentLoaderListener = environmentLoaderListener;
-    }
-
-    @Inject(optional = true)
     public void setTokenManager(@Nullable TraceTokenManager tokenManager)
     {
         this.traceTokenManager = tokenManager;
@@ -150,7 +141,6 @@ public class HttpServerProvider
                     adminFilters,
                     mbeanServer,
                     loginService,
-                    environmentLoaderListener,
                     traceTokenManager,
                     stats,
                     eventClient);

@@ -1,10 +1,10 @@
 package io.airlift.security.authentication.client;
 
 import com.google.common.base.Strings;
-import com.google.common.base.Throwables;
 import io.airlift.log.Logger;
 import io.airlift.security.authentication.AuthScheme;
 import io.airlift.security.config.ClientSecurityConfig;
+import io.airlift.security.exception.AuthenticationException;
 import io.airlift.security.utils.KerberosUtil;
 import org.eclipse.jetty.client.api.Authentication;
 import org.eclipse.jetty.client.api.ContentResponse;
@@ -19,6 +19,7 @@ import javax.security.auth.Subject;
 import javax.security.auth.login.LoginException;
 
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.UnknownHostException;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -40,9 +41,9 @@ public class SpnegoAuthentication
         checkArgument(!Strings.isNullOrEmpty(clientSecurityConfig.getServiceName()), "serviceName is null or empty");
         try {
             init(clientSecurityConfig, serviceUri);
-        } //TODO propagate exceptions properly
+        }
         catch (UnknownHostException | LoginException e) {
-            throw Throwables.propagate(e);
+            throw new AuthenticationException(e);
         }
     }
 
@@ -60,15 +61,17 @@ public class SpnegoAuthentication
                         gssContext.getSrcName(),
                         gssContext.getTargName());
                 String spnegoToken = NEGOTIATE + " " + String.valueOf(B64Code.encode(token));
-                return new SpnegoResult(headerInfo.getHeader(), request.getURI(), spnegoToken);
+                URI requestUri = request.getURI();
+                URI baseUri = new URI(requestUri.getScheme(), requestUri.getAuthority(), requestUri.getPath(), null, null);
+                return new SpnegoResult(headerInfo.getHeader(), baseUri, spnegoToken);
             }
             else {
                 log.warn("Failed to establish GSSContext for request %s!", request.getURI());
                 return null;
             }
-        } //TODO propagate exceptions properly
-        catch (GSSException e) {
-            throw Throwables.propagate(e);
+        }
+        catch (URISyntaxException | GSSException e) {
+            throw new AuthenticationException(e);
         }
     }
 
@@ -78,7 +81,8 @@ public class SpnegoAuthentication
         return AuthScheme.NEGOTIATE.toString().equalsIgnoreCase(type);
     }
 
-    private void init(ClientSecurityConfig clientSecurityConfig, URI serviceHost) throws UnknownHostException, LoginException
+    private void init(ClientSecurityConfig clientSecurityConfig, URI serviceHost)
+            throws UnknownHostException, LoginException
 
     {
         String krb5Conf = clientSecurityConfig.getKrb5Conf();

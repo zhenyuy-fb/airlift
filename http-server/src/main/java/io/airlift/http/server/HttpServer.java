@@ -22,8 +22,6 @@ import io.airlift.event.client.EventClient;
 import io.airlift.http.server.HttpServerBinder.HttpResourceBinding;
 import io.airlift.node.NodeInfo;
 import io.airlift.tracetoken.TraceTokenManager;
-import org.apache.shiro.web.env.EnvironmentLoaderListener;
-import org.apache.shiro.web.servlet.ShiroFilter;
 import org.eclipse.jetty.jmx.MBeanContainer;
 import org.eclipse.jetty.security.ConstraintMapping;
 import org.eclipse.jetty.security.ConstraintSecurityHandler;
@@ -55,14 +53,12 @@ import org.eclipse.jetty.util.thread.ThreadPool;
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 import javax.management.MBeanServer;
-import javax.servlet.DispatcherType;
 import javax.servlet.Filter;
 import javax.servlet.Servlet;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.EnumSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Executor;
@@ -91,7 +87,6 @@ public class HttpServer
             Set<Filter> adminFilters,
             MBeanServer mbeanServer,
             LoginService loginService,
-            EnvironmentLoaderListener environmentLoaderListener,
             TraceTokenManager tokenManager,
             RequestStats stats,
             EventClient eventClient)
@@ -101,8 +96,6 @@ public class HttpServer
         Preconditions.checkNotNull(nodeInfo, "nodeInfo is null");
         Preconditions.checkNotNull(config, "config is null");
         Preconditions.checkNotNull(theServlet, "theServlet is null");
-        Preconditions.checkArgument(loginService == null || environmentLoaderListener == null,
-                "Either environmentLoaderListener or loginService can be set but not both");
 
         QueuedThreadPool threadPool = new QueuedThreadPool(config.getMaxThreads());
         threadPool.setMinThreads(config.getMinThreads());
@@ -228,19 +221,7 @@ public class HttpServer
             handlers.addHandler(new ClassPathResourceHandler(resource.getBaseUri(), resource.getClassPathResourceBase(), resource.getWelcomeFiles()));
         }
 
-        ServletHolder servletHolder = new WrappedServletHolder(theServlet);
-        servletHolder.setInitParameters(ImmutableMap.copyOf(parameters));
-
-        if (config.isHttpEnabled()) {
-            handlers.addHandler(createServletContext(servletHolder, filters, tokenManager,
-                    loginService, null, "http"));
-        }
-
-        if (config.isHttpsEnabled()) {
-            handlers.addHandler(createServletContext(servletHolder, filters, tokenManager,
-                    loginService, environmentLoaderListener, "https"));
-        }
-
+        handlers.addHandler(createServletContext(theServlet, parameters, filters, tokenManager, loginService, "http", "https"));
         RequestLogHandler logHandler = createLogHandler(config, tokenManager, eventClient);
         if (logHandler != null) {
             handlers.addHandler(logHandler);
@@ -256,30 +237,20 @@ public class HttpServer
 
         HandlerList rootHandlers = new HandlerList();
         if (theAdminServlet != null && config.isAdminEnabled()) {
-            ServletHolder adminServletHolder = new ServletHolder(theAdminServlet);
-            adminServletHolder.setInitParameters(ImmutableMap.copyOf(adminParameters));
-            // TODO: Will add security support for the admin endpoint.
-            rootHandlers.addHandler(createServletContext(adminServletHolder, adminFilters, tokenManager,
-                    loginService, null, "admin"));
+            rootHandlers.addHandler(createServletContext(theAdminServlet, adminParameters, adminFilters, tokenManager, loginService, "admin"));
         }
         rootHandlers.addHandler(statsHandler);
-
-        server.setHandler(handlers);
+        server.setHandler(rootHandlers);
     }
 
-    private static ServletContextHandler createServletContext(
-            ServletHolder servletHolder,
+    private static ServletContextHandler createServletContext(Servlet theServlet,
+            Map<String, String> parameters,
             Set<Filter> filters,
             TraceTokenManager tokenManager,
             LoginService loginService,
-            EnvironmentLoaderListener environmentLoaderListener,
             String... connectorNames)
     {
-        int options = ServletContextHandler.NO_SESSIONS;
-        if (environmentLoaderListener != null) {
-            options = ServletContextHandler.NO_SESSIONS | ServletContextHandler.SECURITY;
-        }
-        ServletContextHandler context = new ServletContextHandler(options);
+        ServletContextHandler context = new ServletContextHandler(ServletContextHandler.NO_SESSIONS);
 
         context.addFilter(new FilterHolder(new TimingFilter()), "/*", null);
         if (tokenManager != null) {
@@ -288,17 +259,8 @@ public class HttpServer
 
         // -- gzip response filter
         context.addFilter(GzipFilter.class, "/*", null);
-        // -- security handler or shiro filter
-        if (environmentLoaderListener != null) {
-            // -- shiro environment
-            context.addEventListener(environmentLoaderListener);
-            // -- root shiro filter
-            FilterHolder filterHolder = new FilterHolder();
-            filterHolder.setFilter(new ShiroFilter());
-
-            EnumSet<DispatcherType> types = EnumSet.allOf(DispatcherType.class);
-            context.addFilter(filterHolder, "/*", types);
-        } else if (loginService != null) {
+        // -- security handler
+        if (loginService != null) {
             SecurityHandler securityHandler = createSecurityHandler(loginService);
             context.setSecurityHandler(securityHandler);
         }
@@ -307,6 +269,8 @@ public class HttpServer
             context.addFilter(new FilterHolder(filter), "/*", null);
         }
         // -- the servlet
+        ServletHolder servletHolder = new ServletHolder(theServlet);
+        servletHolder.setInitParameters(ImmutableMap.copyOf(parameters));
         context.addServlet(servletHolder, "/*");
 
         // Starting with Jetty 9 there is no way to specify connectors directly, but
