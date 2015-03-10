@@ -3,6 +3,7 @@ package io.airlift.http.client.jetty;
 import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Throwables;
+import com.google.common.cache.CacheBuilder;
 import com.google.common.collect.AbstractIterator;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableListMultimap;
@@ -20,21 +21,29 @@ import io.airlift.http.client.ResponseHandler;
 import io.airlift.http.client.ResponseTooLargeException;
 import io.airlift.http.client.StaticBodyGenerator;
 import io.airlift.log.Logger;
+import io.airlift.security.authentication.client.AuthenticationProvider;
+import io.airlift.security.authentication.client.ExtendedAuthenticationStore;
+import io.airlift.security.config.ClientSecurityConfig;
 import io.airlift.stats.Distribution;
 import io.airlift.units.DataSize;
 import io.airlift.units.DataSize.Unit;
 import io.airlift.units.Duration;
 import org.eclipse.jetty.client.ConnectionPool;
+import org.eclipse.jetty.client.HttpAuthenticationStore;
 import org.eclipse.jetty.client.HttpClient;
+import org.eclipse.jetty.client.HttpClientTransport;
 import org.eclipse.jetty.client.HttpExchange;
 import org.eclipse.jetty.client.HttpRequest;
 import org.eclipse.jetty.client.PoolingHttpDestination;
 import org.eclipse.jetty.client.Socks4Proxy;
+import org.eclipse.jetty.client.api.Authentication;
+import org.eclipse.jetty.client.api.AuthenticationStore;
 import org.eclipse.jetty.client.api.ContentProvider;
 import org.eclipse.jetty.client.api.Destination;
 import org.eclipse.jetty.client.api.Response;
 import org.eclipse.jetty.client.api.Response.Listener;
 import org.eclipse.jetty.client.api.Result;
+import org.eclipse.jetty.client.http.HttpClientTransportOverHTTP;
 import org.eclipse.jetty.client.http.HttpConnectionOverHTTP;
 import org.eclipse.jetty.client.util.BytesContentProvider;
 import org.eclipse.jetty.client.util.InputStreamResponseListener;
@@ -103,8 +112,8 @@ public class JettyHttpClient
     private final List<HttpRequestFilter> requestFilters;
     private final Exception creationLocation = new Exception();
     private final String name;
-//    private final ClientSecurityConfig securityConfig;
-//    private final Object authLock = new Object();
+    private final ClientSecurityConfig securityConfig;
+    private final Object authLock = new Object();
 
     public JettyHttpClient()
     {
@@ -118,30 +127,30 @@ public class JettyHttpClient
 
     public JettyHttpClient(HttpClientConfig config, Iterable<? extends HttpRequestFilter> requestFilters)
     {
-        this(config, Optional.<JettyIoPool>absent(), requestFilters);
+        this(config, null, Optional.<JettyIoPool>absent(), requestFilters);
     }
 
     public JettyHttpClient(HttpClientConfig config, JettyIoPool jettyIoPool, Iterable<? extends HttpRequestFilter> requestFilters)
     {
-        this(config, Optional.of(jettyIoPool), requestFilters);
+        this(config, null, Optional.of(jettyIoPool), requestFilters);
     }
 
-//    public JettyHttpClient(HttpClientConfig config, ClientSecurityConfig securityConfig)
-//    {
-//        this(config, securityConfig, ImmutableList.<HttpRequestFilter>of());
-//    }
-//
-//    public JettyHttpClient(HttpClientConfig config, ClientSecurityConfig securityConfig, Iterable<? extends HttpRequestFilter> requestFilters)
-//    {
-//        this(config, securityConfig, Optional.<JettyIoPool>absent(), requestFilters);
-//    }
-//
-//    public JettyHttpClient(HttpClientConfig config, ClientSecurityConfig securityConfig, JettyIoPool jettyIoPool, Iterable<? extends HttpRequestFilter> requestFilters)
-//    {
-//        this(config, securityConfig, Optional.of(jettyIoPool), requestFilters);
-//    }
+    public JettyHttpClient(HttpClientConfig config, ClientSecurityConfig securityConfig)
+    {
+        this(config, securityConfig, ImmutableList.<HttpRequestFilter>of());
+    }
 
-    private JettyHttpClient(HttpClientConfig config, Optional<JettyIoPool> jettyIoPool, Iterable<? extends HttpRequestFilter> requestFilters)
+    public JettyHttpClient(HttpClientConfig config, ClientSecurityConfig securityConfig, Iterable<? extends HttpRequestFilter> requestFilters)
+    {
+        this(config, securityConfig, Optional.<JettyIoPool>absent(), requestFilters);
+    }
+
+    public JettyHttpClient(HttpClientConfig config, ClientSecurityConfig securityConfig, JettyIoPool jettyIoPool, Iterable<? extends HttpRequestFilter> requestFilters)
+    {
+        this(config, securityConfig, Optional.of(jettyIoPool), requestFilters);
+    }
+
+    private JettyHttpClient(HttpClientConfig config, ClientSecurityConfig securityConfig, Optional<JettyIoPool> jettyIoPool, Iterable<? extends HttpRequestFilter> requestFilters)
     {
         checkNotNull(config, "config is null");
         checkNotNull(jettyIoPool, "jettyIoPool is null");
@@ -150,7 +159,7 @@ public class JettyHttpClient
         maxContentLength = config.getMaxContentLength().toBytes();
         requestTimeoutMillis = config.getRequestTimeout().toMillis();
         idleTimeoutMillis = config.getIdleTimeout().toMillis();
-//        this.securityConfig = securityConfig;
+        this.securityConfig = securityConfig;
 
         creationLocation.fillInStackTrace();
 
@@ -161,7 +170,7 @@ public class JettyHttpClient
             sslContextFactory.setKeyStorePassword(config.getKeyStorePassword());
         }
 
-        httpClient = new HttpClient(sslContextFactory);
+        httpClient = new ExtendedHttpClient(sslContextFactory);
         httpClient.setMaxConnectionsPerDestination(config.getMaxConnectionsPerServer());
         httpClient.setMaxRequestsQueuedPerDestination(config.getMaxRequestsQueuedPerDestination());
 
@@ -403,18 +412,19 @@ public class JettyHttpClient
         jettyRequest.idleTimeout(idleTimeoutMillis, MILLISECONDS);
 
         // add client authentication credentials
-//        if (securityConfig != null && securityConfig.enabled()) {
-//            if (httpClient.getAuthenticationStore().findAuthenticationResult(jettyRequest.getURI()) == null) {
-//                synchronized (authLock) {
-//                    if (httpClient.getAuthenticationStore().findAuthenticationResult(jettyRequest.getURI()) == null) {
-//                        AuthenticationProvider authenticationProvider = new AuthenticationProvider(securityConfig, jettyRequest.getURI());
-//                        for (Authentication authentication : authenticationProvider.getAuthentications()) {
-//                            httpClient.getAuthenticationStore().addAuthentication(authentication);
-//                        }
-//                    }
-//                }
-//            }
-//        }
+        // TODO: use Guava cache to improve efficiency
+        if (securityConfig != null && securityConfig.enabled()) {
+            if (httpClient.getAuthenticationStore().findAuthenticationResult(jettyRequest.getURI()) == null) {
+                synchronized (authLock) {
+                    if (httpClient.getAuthenticationStore().findAuthenticationResult(jettyRequest.getURI()) == null) {
+                        AuthenticationProvider authenticationProvider = new AuthenticationProvider(securityConfig, jettyRequest.getURI());
+                        for (Authentication authentication : authenticationProvider.getAuthentications()) {
+                            httpClient.getAuthenticationStore().addAuthentication(authentication);
+                        }
+                    }
+                }
+            }
+        }
 
         return jettyRequest;
     }
@@ -1308,6 +1318,21 @@ public class JettyHttpClient
                         .forEach(listener -> processor.process(distribution, listener, now));
                 return distribution;
             });
+        }
+    }
+
+    private static class ExtendedHttpClient extends HttpClient
+    {
+        private final AuthenticationStore authenticationStore = new ExtendedAuthenticationStore();
+
+        public ExtendedHttpClient(SslContextFactory sslContextFactory)
+        {
+            super(new HttpClientTransportOverHTTP(), sslContextFactory);
+        }
+
+        public ExtendedHttpClient(HttpClientTransport transport, SslContextFactory sslContextFactory)
+        {
+            super(transport, sslContextFactory);
         }
     }
 }
