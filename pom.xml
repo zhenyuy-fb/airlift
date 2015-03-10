@@ -25,7 +25,6 @@
 
         <dep.airlift.version>0.104-SNAPSHOT</dep.airlift.version>
         <dep.packaging.version>${dep.airlift.version}</dep.packaging.version>
-        <dep.shiro.version>1.2.3</dep.shiro.version>
     </properties>
 
     <organization>
@@ -228,18 +227,6 @@
                 <groupId>mysql</groupId>
                 <artifactId>mysql-connector-java</artifactId>
                 <version>5.1.23</version>
-            </dependency>
-
-            <dependency>
-                <groupId>org.apache.shiro</groupId>
-                <artifactId>shiro-core</artifactId>
-                <version>${dep.shiro.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>org.apache.shiro</groupId>
-                <artifactId>shiro-web</artifactId>
-                <version>${dep.shiro.version}</version>
             </dependency>
 
             <dependency>

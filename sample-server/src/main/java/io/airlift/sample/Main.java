@@ -20,16 +20,15 @@ import io.airlift.bootstrap.Bootstrap;
 import io.airlift.discovery.client.Announcer;
 import io.airlift.discovery.client.DiscoveryModule;
 import io.airlift.event.client.HttpEventModule;
-import io.airlift.jmx.JmxHttpModule;
-import io.airlift.jmx.http.rpc.JmxHttpRpcModule;
-import io.airlift.json.JsonModule;
 import io.airlift.http.server.HttpServerModule;
 import io.airlift.jaxrs.JaxrsModule;
+import io.airlift.jmx.JmxHttpModule;
 import io.airlift.jmx.JmxModule;
+import io.airlift.jmx.http.rpc.JmxHttpRpcModule;
+import io.airlift.json.JsonModule;
 import io.airlift.log.LogJmxModule;
 import io.airlift.log.Logger;
 import io.airlift.node.NodeModule;
-import io.airlift.security.SecurityModule;
 import io.airlift.tracetoken.TraceTokenModule;
 import org.weakref.jmx.guice.MBeanModule;
 
@@ -44,7 +43,6 @@ public class Main
                 new NodeModule(),
                 new DiscoveryModule(),
                 new HttpServerModule(),
-                new SecurityModule(),
                 new JsonModule(),
                 new JaxrsModule(true),
                 new MBeanModule(),
